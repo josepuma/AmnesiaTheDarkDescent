@@ -463,6 +463,20 @@ namespace hpl {
 
 		return true;
 	}
+
+	//-----------------------------------------------------------------------
+
+	bool cLowLevelSystemSDL::AddScriptGenericFunc(const tString& asFuncDecl, void* pFunc)
+	{
+		// Must be typed as asGENFUNC_t, else asFUNCTION does not flag the pointer as generic and registration fails
+		if(mpScriptEngine->RegisterGlobalFunction(asFuncDecl.c_str(),asFUNCTION(reinterpret_cast<asGENFUNC_t>(pFunc)),asCALL_GENERIC)<0)
+		{
+			Error("Couldn't add generic func '%s'\n",asFuncDecl.c_str());
+			return false;
+		}
+
+		return true;
+	}
 	
 	//-----------------------------------------------------------------------
 

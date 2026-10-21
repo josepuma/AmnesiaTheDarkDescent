@@ -60,6 +60,44 @@
 #include "LuxArea_Sticky.h"
 
 #include "LuxEnemy.h"
+
+#include <angelscript.h>
+#include "impl/scriptstring.h"
+
+//-----------------------------------------------------------------------
+
+// Generic calling convention wrappers for script functions returning float.
+// The prebuilt AngelScript 2.19.2 for macOS x86_64 loses the return value of native
+// calls returning float (scripts always get 0), the generic convention returns it correctly.
+template<float (__stdcall *F)()>
+static void GenericFloat_V(asIScriptGeneric *apGen)
+{
+	apGen->SetReturnFloat(F());
+}
+
+template<float (__stdcall *F)(float)>
+static void GenericFloat_F(asIScriptGeneric *apGen)
+{
+	apGen->SetReturnFloat(F(apGen->GetArgFloat(0)));
+}
+
+template<float (__stdcall *F)(float, float)>
+static void GenericFloat_FF(asIScriptGeneric *apGen)
+{
+	apGen->SetReturnFloat(F(apGen->GetArgFloat(0), apGen->GetArgFloat(1)));
+}
+
+template<float (__stdcall *F)(float, float, float)>
+static void GenericFloat_FFF(asIScriptGeneric *apGen)
+{
+	apGen->SetReturnFloat(F(apGen->GetArgFloat(0), apGen->GetArgFloat(1), apGen->GetArgFloat(2)));
+}
+
+template<float (__stdcall *F)(string&)>
+static void GenericFloat_S(asIScriptGeneric *apGen)
+{
+	apGen->SetReturnFloat(F(static_cast<CScriptString*>(apGen->GetArgAddress(0))->buffer));
+}
 #include "LuxEnemyPathfinder.h"
 #include "LuxItemType.h"
 
@@ -153,6 +191,11 @@ void cLuxScriptHandler::OnDraw(float afFrameTime)
 void cLuxScriptHandler::AddFunc(const tString& asFunc, void *apFuncPtr)
 {
 	mpLowLevelSystem->AddScriptFunc(asFunc,apFuncPtr);
+}
+
+void cLuxScriptHandler::AddGenericFunc(const tString& asFunc, void *apFuncPtr)
+{
+	mpLowLevelSystem->AddScriptGenericFunc(asFunc,apFuncPtr);
 }
 
 //-----------------------------------------------------------------------
@@ -377,14 +420,14 @@ void cLuxScriptHandler::InitScriptFunctions()
 	AddFunc("void ProgLog(string &in asLevel, string &in asMessage)", (void *)ProgLog);
 	AddFunc("bool ScriptDebugOn()",(void *)ScriptDebugOn);
 
-	AddFunc("float RandFloat(float afMin, float afMax)",(void *)RandFloat);
+	AddGenericFunc("float RandFloat(float afMin, float afMax)",(void *)GenericFloat_FF<RandFloat>);
 	AddFunc("int RandInt(int alMin, int alMax)",(void *)RandInt);
 	AddFunc("bool StringContains(string &in asString, string &in asSubString)", (void *)StringContains);
 	AddFunc("string& StringSub(string &in asString, int alStart, int alCount)", (void *)StringSub);
 
 	AddFunc("void AddTimer(string &in asName, float afTime, string &in asFunction)",(void *)AddTimer);
 	AddFunc("void RemoveTimer(string &in asName)",(void *)RemoveTimer);
-	AddFunc("float GetTimerTimeLeft(string &in asName)",(void *)GetTimerTimeLeft);
+	AddGenericFunc("float GetTimerTimeLeft(string &in asName)",(void *)GenericFloat_S<GetTimerTimeLeft>);
 
 	AddFunc("void SetLocalVarInt(string &in asName, int alVal)",(void *)SetLocalVarInt);
 	AddFunc("void SetLocalVarFloat(string &in asName, float afVal)",(void *)SetLocalVarFloat);
@@ -395,7 +438,7 @@ void cLuxScriptHandler::InitScriptFunctions()
 	AddFunc("void AddLocalVarString(string &in asName, string &in asVal)",(void *)AddLocalVarString);
 
 	AddFunc("int GetLocalVarInt(string &in asName)",(void *)GetLocalVarInt);
-	AddFunc("float GetLocalVarFloat(string &in asName)",(void *)GetLocalVarFloat);
+	AddGenericFunc("float GetLocalVarFloat(string &in asName)",(void *)GenericFloat_S<GetLocalVarFloat>);
 	AddFunc("string& GetLocalVarString(string &in asName)",(void *)GetLocalVarString);
 
 	AddFunc("void SetGlobalVarInt(string &in asName, int alVal)",(void *)SetGlobalVarInt);
@@ -407,7 +450,7 @@ void cLuxScriptHandler::InitScriptFunctions()
 	AddFunc("void AddGlobalVarString(string &in asName, string &in asVal)",(void *)AddGlobalVarString);
 
 	AddFunc("int GetGlobalVarInt(string &in asName)",(void *)GetGlobalVarInt);
-	AddFunc("float GetGlobalVarFloat(string &in asName)",(void *)GetGlobalVarFloat);
+	AddGenericFunc("float GetGlobalVarFloat(string &in asName)",(void *)GenericFloat_S<GetGlobalVarFloat>);
 	AddFunc("string& GetGlobalVarString(string &in asName)",(void *)GetGlobalVarString);
 
 	AddFunc("void StartCredits(string &in asMusic, bool abLoopMusic, string &in asTextCat, string &in asTextEntry, int alEndNum)",(void *)StartCredits);
@@ -472,22 +515,22 @@ void cLuxScriptHandler::InitScriptFunctions()
 	AddFunc("void ShowPlayerCrossHairIcons(bool abX)",(void *)ShowPlayerCrossHairIcons);
 	
 	AddFunc("void SetPlayerPos(float afX, float afY, float afZ)",(void *)SetPlayerPos);
-	AddFunc("float GetPlayerPosX()",(void *)GetPlayerPosX);
-	AddFunc("float GetPlayerPosY()",(void *)GetPlayerPosY);
-	AddFunc("float GetPlayerPosZ()",(void *)GetPlayerPosZ);
+	AddGenericFunc("float GetPlayerPosX()",(void *)GenericFloat_V<GetPlayerPosX>);
+	AddGenericFunc("float GetPlayerPosY()",(void *)GenericFloat_V<GetPlayerPosY>);
+	AddGenericFunc("float GetPlayerPosZ()",(void *)GenericFloat_V<GetPlayerPosZ>);
 	
 	AddFunc("void SetPlayerSanity(float afSanity)",(void *)SetPlayerSanity);
 	AddFunc("void AddPlayerSanity(float afSanity)",(void *)AddPlayerSanity);
-	AddFunc("float GetPlayerSanity()",(void *)GetPlayerSanity);
+	AddGenericFunc("float GetPlayerSanity()",(void *)GenericFloat_V<GetPlayerSanity>);
 	AddFunc("void SetPlayerHealth(float afHealth)",(void *)SetPlayerHealth);
 	AddFunc("void AddPlayerHealth(float afHealth)",(void *)AddPlayerHealth);
-	AddFunc("float GetPlayerHealth()",(void *)GetPlayerHealth);
+	AddGenericFunc("float GetPlayerHealth()",(void *)GenericFloat_V<GetPlayerHealth>);
 	AddFunc("void SetPlayerLampOil(float afOil)",(void *)SetPlayerLampOil);
 	AddFunc("void AddPlayerLampOil(float afOil)",(void *)AddPlayerLampOil);
-	AddFunc("float GetPlayerLampOil()",(void *)GetPlayerLampOil);
+	AddGenericFunc("float GetPlayerLampOil()",(void *)GenericFloat_V<GetPlayerLampOil>);
 
-	AddFunc("float GetPlayerSpeed()",(void *)GetPlayerSpeed);
-	AddFunc("float GetPlayerYSpeed()",(void *)GetPlayerYSpeed);
+	AddGenericFunc("float GetPlayerSpeed()",(void *)GenericFloat_V<GetPlayerSpeed>);
+	AddGenericFunc("float GetPlayerYSpeed()",(void *)GenericFloat_V<GetPlayerYSpeed>);
 	AddFunc("void MovePlayerForward(float afAmount)",(void *)MovePlayerForward);
 	AddFunc("void SetPlayerPermaDeathSound(string &in asSound)",(void *)SetPlayerPermaDeathSound);
 
@@ -575,9 +618,9 @@ void cLuxScriptHandler::InitScriptFunctions()
 	AddFunc("void SetEntityVisible(string &in asName, bool abVisible)",(void *)SetEntityVisible);
 	AddFunc("bool GetEntityExists(string &in asName)",(void *)GetEntityExists);
 	AddFunc("void SetEntityPos(string &in asName, float afX, float afY, float afZ)",(void *)SetEntityPos);
-	AddFunc("float GetEntityPosX(string &in asName)",(void *)GetEntityPosX);
-	AddFunc("float GetEntityPosY(string &in asName)",(void *)GetEntityPosY);
-	AddFunc("float GetEntityPosZ(string &in asName)",(void *)GetEntityPosZ);
+	AddGenericFunc("float GetEntityPosX(string &in asName)",(void *)GenericFloat_S<GetEntityPosX>);
+	AddGenericFunc("float GetEntityPosY(string &in asName)",(void *)GenericFloat_S<GetEntityPosY>);
+	AddGenericFunc("float GetEntityPosZ(string &in asName)",(void *)GenericFloat_S<GetEntityPosZ>);
 	AddFunc("void SetEntityCustomFocusCrossHair(string &in asName, string &in asCrossHair)",(void *)SetEntityCustomFocusCrossHair);
 	AddFunc("void CreateEntityAtArea(string &in asEntityName, string &in asEntityFile, string &in asAreaName, bool abFullGameSave)",(void *)CreateEntityAtArea);
 	AddFunc("void ReplaceEntity(string &in asName, string &in asBodyName, string &in asNewEntityName, string &in asNewEntityFile, bool abFullGameSave)",(void *)ReplaceEntity);
@@ -650,7 +693,7 @@ void cLuxScriptHandler::InitScriptFunctions()
 
 	AddFunc("void SetPropHealth(string &in asName, float afHealth)",(void *)SetPropHealth);
 	AddFunc("void AddPropHealth(string &in asName, float afHealth)",(void *)AddPropHealth);
-	AddFunc("float GetPropHealth(string &in asName)",(void *)GetPropHealth);
+	AddGenericFunc("float GetPropHealth(string &in asName)",(void *)GenericFloat_S<GetPropHealth>);
 	AddFunc("void ResetProp(string &in asName)",(void *)ResetProp);
 	AddFunc("void PlayPropAnimation(string &in asProp, string &in asAnimation, float afFadeTime, bool abLoop, string &in asCallback)",(void *)PlayPropAnimation);
 	
@@ -664,7 +707,7 @@ void cLuxScriptHandler::InitScriptFunctions()
 	AddFunc("void AddBodyImpulse(string &in asName, float afX, float afY, float afZ, string &in asCoordSystem)",(void *)AddBodyImpulse);
 	AddFunc("void BreakJoint(string &in asName)", (void *)BreakJoint);
 	AddFunc("void SetBodyMass(string &in asName, float afMass)", (void *)SetBodyMass);
-	AddFunc("float GetBodyMass(string &in asName)", (void *)GetBodyMass);
+	AddGenericFunc("float GetBodyMass(string &in asName)",(void *)GenericFloat_S<GetBodyMass>);
 
 
 	AddFunc("void AddEntityCollideCallback(string &in asParentName, string &in asChildName, string &in asFunction, bool abDeleteOnCollide, int alStates)",(void *)AddEntityCollideCallback);
@@ -676,22 +719,22 @@ void cLuxScriptHandler::InitScriptFunctions()
 	AddFunc("void InteractConnectPropWithMoveObject(string &in asName, string &in asPropName, string &in asMoveObjectName, bool abInteractOnly,bool abInvert, int alStatesUsed)",(void *)InteractConnectPropWithMoveObject);
 	AddFunc("void ConnectEntities(string &in asName, string &in asMainEntity, string &in asConnectEntity, bool abInvertStateSent, int alStatesUsed, string &in asCallbackFunc)",(void *)ConnectEntities); 
 
-	AddFunc("float MathSin(float afX)",(void *)ScriptSin);
-	AddFunc("float MathCos(float afX)",(void *)ScriptCos);
-	AddFunc("float MathTan(float afX)",(void *)ScriptTan);
-	AddFunc("float MathAsin(float afX)",(void *)ScriptAsin);
-	AddFunc("float MathAcos(float afX)",(void *)ScriptAcos);
-	AddFunc("float MathAtan(float afX)",(void *)ScriptAtan);
-	AddFunc("float MathAtan2(float afX, float afY)",(void *)ScriptAtan2);
-	AddFunc("float MathSqrt(float afX)",(void *)ScriptSqrt);
-	AddFunc("float MathPow(float afBase, float afExp)",(void *)ScriptPow);
-	AddFunc("float MathMin(float afA, float afB)",(void *)ScriptMin);
-	AddFunc("float MathMax(float afA, float afB)",(void *)ScriptMax);
-	AddFunc("float MathClamp(float afX, float afMin, float afMax)",(void *)ScriptClamp);
-	AddFunc("float MathAbs(float afX)",(void *)ScriptAbs);
+	AddGenericFunc("float MathSin(float afX)",(void *)GenericFloat_F<ScriptSin>);
+	AddGenericFunc("float MathCos(float afX)",(void *)GenericFloat_F<ScriptCos>);
+	AddGenericFunc("float MathTan(float afX)",(void *)GenericFloat_F<ScriptTan>);
+	AddGenericFunc("float MathAsin(float afX)",(void *)GenericFloat_F<ScriptAsin>);
+	AddGenericFunc("float MathAcos(float afX)",(void *)GenericFloat_F<ScriptAcos>);
+	AddGenericFunc("float MathAtan(float afX)",(void *)GenericFloat_F<ScriptAtan>);
+	AddGenericFunc("float MathAtan2(float afX, float afY)",(void *)GenericFloat_FF<ScriptAtan2>);
+	AddGenericFunc("float MathSqrt(float afX)",(void *)GenericFloat_F<ScriptSqrt>);
+	AddGenericFunc("float MathPow(float afBase, float afExp)",(void *)GenericFloat_FF<ScriptPow>);
+	AddGenericFunc("float MathMin(float afA, float afB)",(void *)GenericFloat_FF<ScriptMin>);
+	AddGenericFunc("float MathMax(float afA, float afB)",(void *)GenericFloat_FF<ScriptMax>);
+	AddGenericFunc("float MathClamp(float afX, float afMin, float afMax)",(void *)GenericFloat_FFF<ScriptClamp>);
+	AddGenericFunc("float MathAbs(float afX)",(void *)GenericFloat_F<ScriptAbs>);
 
 	AddFunc("int StringToInt(string&in asString)",(void *)ScriptStringToInt);
-	AddFunc("float StringToFloat(string&in asString)",(void *)ScriptStringToFloat);
+	AddGenericFunc("float StringToFloat(string&in asString)",(void *)GenericFloat_S<ScriptStringToFloat>);
 	AddFunc("bool StringToBool(string&in asString)",(void *)ScriptStringToBool);
 
 }

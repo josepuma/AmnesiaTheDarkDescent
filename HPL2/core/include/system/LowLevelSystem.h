@@ -103,7 +103,15 @@ namespace hpl {
 		 * \return 
 		 */
 		virtual bool AddScriptFunc(const tString& asFuncDecl, void* pFunc)=0;
-		
+
+		/**
+		 * Add a function to the script vm using the generic calling convention. pFunc must be a
+		 * void (*)(asIScriptGeneric*). Needed where native calls are unreliable, eg float return values.
+		 * \param asFuncDecl the declaration.
+		 * \return
+		 */
+		virtual bool AddScriptGenericFunc(const tString& asFuncDecl, void* pFunc)=0;
+
 		/**
 		 * Add a variable to the script vm. Example: "int MyVar"
 		 * \param asVarDecl the declartion 

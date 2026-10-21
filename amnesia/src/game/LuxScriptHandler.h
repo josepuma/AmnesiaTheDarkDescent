@@ -52,6 +52,7 @@ private:
 	// Helpers
 	void InitScriptFunctions();
 	void AddFunc(const tString& asFunc, void *apFuncPtr);
+	void AddGenericFunc(const tString& asFunc, void *apFuncPtr);
 
 	static bool GetEntities(const tString& asName,tLuxEntityList &alstEntities, eLuxEntityType aType, int alSubType);
 	static iLuxEntity* GetEntity(const tString& asName, eLuxEntityType aType, int alSubType);
