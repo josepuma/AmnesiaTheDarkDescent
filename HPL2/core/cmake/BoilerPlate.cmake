@@ -26,8 +26,9 @@ endif()
 set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS} -fno-strict-aliasing")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-strict-aliasing")
 
-if(APPLE)
-    set(CMAKE_OSX_DEPLOYMENT_TARGET "10.6")
+if(APPLE AND NOT CMAKE_OSX_DEPLOYMENT_TARGET)
+    # 11.0 is the oldest target supported by current SDK libc++ (__configuration/availability.h)
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0")
 endif()
 
 if(LINUX)

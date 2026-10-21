@@ -39,6 +39,8 @@ ELSEIF(LINUX)
 ENDIF()
 
 OPTION(USE_SDL2 "Use SDL2 instead of SDL1.2" ON)
+OPTION(HPL2_WITH_FBX "Enable FBX mesh loader (requires FBX SDK 2012)" OFF)
+OPTION(HPL2_BUILD_TOOLS "Build editors and viewer tools" OFF)
 
 add_subdirectory(../dependencies/OALWrapper OALWrapper)
 
@@ -151,8 +153,13 @@ file(GLOB impl_sources RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
     sources/impl/MeshLoaderColladaHelpers.cpp
     sources/impl/MeshLoaderColladaLoader.cpp
     sources/impl/MeshLoaderMSH.cpp
-    sources/impl/MeshLoaderFBX.cpp
 )
+
+IF(HPL2_WITH_FBX)
+    LIST(APPEND impl_sources
+        sources/impl/MeshLoaderFBX.cpp
+    )
+ENDIF()
 
 IF(APPLE)
     LIST(APPEND impl_sources
@@ -195,7 +202,7 @@ function(GenerateBuildID outvar idname includedir sourcedir)
             ${sourcedir}/BuildID_${idname}_${BUILDID_SUFFIX}.cpp
             ${includedir}/BuildID_${idname}.h
         COMMAND
-            ${BUILDID_BIN}
+            perl ${BUILDID_BIN}
         ARGS
             ${idname} ${includedir} ${sourcedir}
     )
@@ -203,11 +210,8 @@ function(GenerateBuildID outvar idname includedir sourcedir)
             ${includedir}/BuildID_${idname}.h PARENT_SCOPE)
 endfunction()
 
-GenerateBuildID(version_source
-    HPL2_0
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/sources
-)
+# HPL2 core does not generate its BuildID: GetBuildID_HPL2_0() is unused by the engine
+# and the generated header would rewrite a tracked file on every build
 
 # setup source groups
 source_group("AI" REGULAR_EXPRESSION "\\/ai\\/.+")
@@ -239,7 +243,11 @@ source_group("Platform" REGULAR_EXPRESSION "\\/impl\\/Platform.+")
 
 FindPrebuiltLibrary(NEWTON_LIBRARY Newton)
 FindPrebuiltLibrary(ANGELSCRIPT_LIBRARY angelscript)
-FindPrebuiltLibrary(FBX_LIBRARY fbxsdk-2012.2-static)
+IF(HPL2_WITH_FBX)
+    FindPrebuiltLibrary(FBX_LIBRARY fbxsdk-2012.2-static)
+ELSE()
+    SET(FBX_LIBRARY "")
+ENDIF()
 FindPrebuiltLibrary(GLEW_LIBRARY GLEW)
 FindPrebuiltLibrary(THEORA_LIBRARY theora)
 FindPrebuiltLibrary(DEVIL_LIBRARY IL)
@@ -251,7 +259,6 @@ mark_as_advanced(NEWTON_LIBRARY ANGELSCRIPT_LIBRARY FBX_LIBRARY GLEW_LIBRARY THE
 
 add_library(HPL2 STATIC
     ${common_sources}
-    ${version_sources}
     ${impl_sources}
 )
 
@@ -262,6 +269,10 @@ target_include_directories(HPL2
 target_compile_definitions(HPL2
     ${HPL2_DEFINES}
 )
+
+IF(HPL2_WITH_FBX)
+    target_compile_definitions(HPL2 PRIVATE HPL2_WITH_FBX)
+ENDIF()
 
 if(LINUX)
     set(PLATFORM_LIBS
@@ -302,10 +313,6 @@ if(APPLE)
     mark_as_advanced(HPL2_FRAMEWORKS HPL2_LIBRARIES)
 
     FUNCTION(PostBuildMacBundle APP_TARGET framework_list lib_list)
-        INCLUDE(BundleUtilities)
-        GET_TARGET_PROPERTY(_BIN_NAME ${APP_TARGET} LOCATION)
-        GET_DOTAPP_DIR(${_BIN_NAME} _BUNDLE_DIR)
-
         set(_SCRIPT_FILE ${CMAKE_CURRENT_BINARY_DIR}/${APP_TARGET}_prep.cmake)
         file(WRITE ${_SCRIPT_FILE}
             "# Generated Script file\n"
@@ -328,7 +335,7 @@ if(APPLE)
 
         ADD_CUSTOM_COMMAND(TARGET ${APP_TARGET}
             POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -DBUNDLE_APP="${_BUNDLE_DIR}" -DDEP_LIB_DIR="${DEP_LIB_DIR}" -P "${_SCRIPT_FILE}"
+            COMMAND ${CMAKE_COMMAND} "-DBUNDLE_APP=$<TARGET_BUNDLE_DIR:${APP_TARGET}>" -DDEP_LIB_DIR="${DEP_LIB_DIR}" -P "${_SCRIPT_FILE}"
         )
     ENDFUNCTION()
 ENDIF()
@@ -344,7 +351,11 @@ FUNCTION(AddTestTarget target_name)
     )
 ENDFUNCTION()
 
-add_subdirectory(../tests tests)
-add_subdirectory(../tools tools)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../tests/CMakeLists.txt)
+    add_subdirectory(../tests tests)
+endif()
+if(HPL2_BUILD_TOOLS)
+    add_subdirectory(../tools tools)
+endif()
 
 
