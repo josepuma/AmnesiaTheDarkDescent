@@ -220,7 +220,14 @@ namespace hpl {
 #if SDL_VERSION_ATLEAST(2, 0, 0)
         unsigned int mlFlags = SDL_WINDOW_OPENGL;
         if (alWidth == 0 && alHeight == 0) {
-            mvScreenSize = cVector2l(800,600);
+            // Use the desktop size up front: on macOS the switch to fullscreen desktop is
+            // asynchronous, so SDL_GetWindowSize right after creation still returns the initial size
+            SDL_DisplayMode desktopMode;
+            if (SDL_GetDesktopDisplayMode(mlDisplay, &desktopMode) == 0) {
+                mvScreenSize = cVector2l(desktopMode.w, desktopMode.h);
+            } else {
+                mvScreenSize = cVector2l(800,600);
+            }
             mlFlags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
         } else if (abFullscreen) {
             mlFlags |= SDL_WINDOW_FULLSCREEN;
