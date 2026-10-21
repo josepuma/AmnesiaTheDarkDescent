@@ -132,7 +132,7 @@ template <class T> 	class cMatrix {
 
 	//-----------------------------------------------------------------------
 
-	inline bool operator!=(const cMatrix<T>& aMtx)
+	inline bool operator!=(const cMatrix<T>& aMtx) const
 	{
 		return !(*this == aMtx);
 	}
